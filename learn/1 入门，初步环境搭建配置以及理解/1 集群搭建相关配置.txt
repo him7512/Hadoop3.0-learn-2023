@@ -1,0 +1,279 @@
+一、首先打开CentOS7更换源：
+	目录：/etc/yum.repos.d/
+	关键文件：CentOS-Base.repo
+	清华源更换步骤：
+		建议先备份 /etc/yum.repos.d/ 内的文件。
+		然后编辑 /etc/yum.repos.d/ 中的相应文件，在 mirrorlist= 开头行前面加 # 注释掉；并将 baseurl= 开头行取消注释（如果被注释的话）。 对于 CentOS7，请把该行内的域名（例如mirror.centos.org）替换为mirrors.tuna.tsinghua.edu.cn。对于 CentOS8，请把 mirror.centos.org/$contentdir 替换为 mirrors.tuna.tsinghua.edu.cn/centos。
+		清理更新缓存 yum clean all
+		更新软件包缓存 yum makecache
+
+	阿里源更换步骤：
+		直接wget下载阿里源：wget -O /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-7.repo
+
+
+二、IP地址名称修改
+	目录：/etc/sysconfig/network-scripts/iBOOTPROTO="static"
+
+	DEFROUTE="yes"
+	IPV4_FAILURE_FATAL="no"
+	IPV6INIT="yes"
+	IPV6_AUTOCONF="yes"
+	IPV6_DEFROUTE="yes"
+	IPV6_FAILURE_FATAL="no"
+	IPV6_ADDR_GEN_MODE="stable-privacy"
+	NAME="ens33"
+	UUID="061eb432-64e1-4d73-8526-39842099a933"
+	DEVICE="ens33"
+	ONBOOT="yes"
+	# IP地址
+	IPADDR=192.168.126.100
+	# 网关
+	GATEWAY=192.168.126.2
+	# 域名解析器
+	DNS1=8.8.8.8
+	# 子网掩码
+	# NETMASK=255.255.255.0
+
+三、主机名称修改
+	目录：/etc/hostname
+
+	Hadoop100
+
+四、配置网络静态IP与主机名称映射
+	目录：/etc/hosts
+
+	192.168.126.100 Hadoop100
+	192.168.126.101 Hadoop101
+	192.168.126.102 Hadoop102
+	192.168.126.103 Hadoop103
+	192.168.126.104 Hadoop104
+	192.168.126.105 Hadoop105
+	192.168.126.106 Hadoop106
+	192.168.126.107 Hadoop107
+	192.168.126.108 Hadoop108
+
+五、reboot/重启网卡（推荐前者）
+	centos6的网卡重启方法：service network restart
+	centos7的网卡重启方法：systemctl restart network
+
+六、配置windows shell主机名称影射
+	修改ssh验证：
+		目录：/etc/ssh/sshd_config
+		取消 PermitRootLogin yes 的注释
+		service sshd restart 重起sshd服务
+
+	win目录：C:\Windows\System32\drivers\etc\hosts
+	粘贴静态网络IP与主机名称影射
+	常规sshd连接
+
+七、安装额外软件包
+	yum install -y epel-release
+
+八、关闭防火墙以及关闭防火墙开机自启
+	systemctl stop firewalld
+	systemctl disable firewalld.service
+
+	查看防火墙状态：systemctl status firewalld
+
+九、创建新用户流程
+	useradd Xxx
+	passwd Xxxxxx
+
+	配置用户Xxx具备root权限
+		目录：/etc/sudoers
+		在 %whell 下面添加：
+			Xxx	ALL=(ALL)	NOPASSWD:ALL
+	
+	退出root：exit
+
+十、创建文件夹，修改所属主和所属组
+	mkdir x/XX
+	chown Xxx:Xxx x/XX
+
+	查看所有者和所属组：ll
+
+十一、卸载虚拟机自带的JDK
+	如果是桌面版默认安装，会自动安装一些jdk，使用如下命令查看：
+		rpm -qa | grep -i java
+			rpm -qa	查询所有安装的rpm软件包
+			grep -i	忽略大小写
+		
+		rpm -qa | grep -i java | xargs -n1 rpm -e --nodeps
+			xargs -n1	表示每次只传递一个参数
+			rpm -e --nodeps	强制卸载软件
+
+十二、jdk1.8环境变量修改
+	目录： etc/profile
+
+	在循环语句中，不难发现，使用循环语句频繁向path中添加新的环境变量，我们可在索引 profile.d文件夹中创建自己的 .sh 文件，编写自己的变量进行添加
+	其中，$PATH的 $ 是提取原PATH中的变量内容，以便进行拼接
+	export 是设置变量全局配置的应用
+	: 代表拼接
+
+	eg： mkdir my_env.sh
+		add:
+			# JAVA1.8
+			export JAVA_HOME1.8=/opt/module/jdk1.8/jdk1.8.0_351
+			export PATH=$PATH:$JAVA_HOME1.8/bin
+
+	配置完成不要忘记 source /etc/profile
+
+十三、hadoop安装配置
+	同理，环境变量如下：
+		#Hadoop3.3.4
+		export HADOOP_HOME334=/opt/module/Hadoop/hadoop-3.3.4
+		export PATH=$PATH:$HADOOP_HOME334/bin
+		export PATH=$PATH:$HADOOP_HOME334/sbin
+
+	Hadoop文件目录下包含诸多内容
+	其中：
+		bin下包含很多命令，比如hdfs、mapred、yarn
+		etc下包含诸多配置信息，比如hdfs-site.xml
+		include下包含头文件(C语言相关)
+		lib下包含诸多本地动态链接库
+		sbin下包含很多重要命令，比如start-yarn.sh
+		share下包含说明文档，学习资料
+
+十四、scp 安全拷贝 命令
+	scp -r User1@localhost1:/x/X/X User2@localhost2:y/Y/Y
+	-r	递归
+	可以实现传送数据/拿取数据/转移数据
+
+十五、rsync 远程同步 命令
+	rsync -av User1@localhost1:/x/X/X User2@localhost2:y/Y/Y
+	-a	归档拷贝
+	-v	显示拷贝过程
+
+十六、自创同步所有节点命令 xsync
+	xsync /x/X/X	
+
+	#!/bin/bash
+	#1 获取输入参数个数，如果没有参数，直接退出
+	pcount=$#
+	if((pcount==0)); then
+	echo no args;
+	exit;
+	fi
+	#2 获取文件名称
+	p1=$1
+	fname=`basename $p1`
+	echo fname=$fname
+	#3 获取上级目录到绝对路径
+	pdir=`cd -P $(dirname $p1); pwd`
+	echo pdir=$pdir
+	#4 获取当前用户名称
+	user=`whoami`
+	#5 循环
+	for((host=103; host<105; host++)); do
+ 		echo ------------------- hadoop$host --------------
+ 		rsync -rvl $pdir/$fname $user@hadoop$host:$pdir
+	done
+
+	保存退出后不要忘记chmod 777 xsync 赋予权限
+
+	第二个脚本
+
+#!/bin/bash
+ 
+#1. 判断参数个数
+if [ $# -lt 1 ]
+then
+    echo Not Enough Arguement!
+    exit;
+fi
+#2. 遍历集群所有机器
+for host in hadoop102 hadoop103 hadoop104
+do 
+    echo ====================  $host  ====================
+    #3. 遍历所有目录，挨个发送
+    for file in $@
+    do
+        #4. 判断文件是否存在 
+        if [ -e $file ]
+            then
+                #5. 获取父目录
+                pdir=$(cd -P $(dirname $file); pwd)
+                #6. 获取当前文件的名称
+                fname=$(basename $file)
+                ssh $host "mkdir -p $pdir" 
+                rsync -av $pdir/$fname $host:$pdir
+            else
+                echo $file does not exists!
+        fi
+    done 
+done
+
+十七、ssh免密配置
+	（普通用户与root用户均要配置ssh免密）
+	ssh 命令： ssh	localhost
+	
+	在ssh建立连接后，会出现 known_hosts 文件
+	现在创建公钥私钥指令： ssh-keygen -t rsa
+	连按三下回车
+	
+	此时 .ssh 隐藏文件夹下（ls -al查看隐藏文件）会出现：
+		id_rsa		私钥
+		id_rsa.pub			公钥
+		分别对应该主机ssh产生的私钥公钥
+
+	 ssh-copy-id hadoop1xx		分发公钥给相应主机（注意也要分发给自己，自己ssh自己也是需要验证的）
+	 分发后会出现 authorized_keys 文件，这里面显示允许免密登录的主机
+	
+
+
+
+
+			
+
+
+			
+			
+
+
+	
+
+
+
+
+
+
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
